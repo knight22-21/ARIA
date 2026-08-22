@@ -7,16 +7,15 @@ Pulls the DB URL from app settings and imports the model metadata so that
 import asyncio
 from logging.config import fileConfig
 
-from alembic import context
 from sqlalchemy.ext.asyncio import async_engine_from_config
 from sqlalchemy.pool import NullPool
 
+# Importing the models package registers every ORM table on Base.metadata,
+# which `--autogenerate` relies on. (Concrete models land in Phase 1.)
+import app.models  # noqa: F401
+from alembic import context
 from app.core.config import settings
 from app.core.db import Base
-
-# Import models package so all tables register on Base.metadata.
-# (Concrete models are added in Phase 1; this import is safe when empty.)
-import app.models  # noqa: F401,E402
 
 config = context.config
 config.set_main_option("sqlalchemy.url", settings.database_url)
@@ -27,11 +26,26 @@ if config.config_file_name is not None:
 target_metadata = Base.metadata
 
 
+def render_item(type_, obj, autogen_context):  # noqa: ANN001
+    """Render the app-layer EncryptedString column as plain sa.String in migrations.
+
+    Encryption is an application concern; at the DB level the column is a VARCHAR,
+    so migrations must not import app code.
+    """
+    from app.core.crypto import EncryptedString
+
+    if type_ == "type" and isinstance(obj, EncryptedString):
+        length = getattr(obj.impl, "length", None)
+        return f"sa.String(length={length})" if length else "sa.String()"
+    return False
+
+
 def do_run_migrations(connection) -> None:
     context.configure(
         connection=connection,
         target_metadata=target_metadata,
         compare_type=True,
+        render_item=render_item,
     )
     with context.begin_transaction():
         context.run_migrations()

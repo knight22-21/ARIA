@@ -40,6 +40,10 @@ class LLMResponse:
     model: str
     input_tokens: int = 0
     output_tokens: int = 0
+    # Reasoning models (e.g. Groq gpt-oss) expose their chain-of-thought
+    # separately from the final answer. Captured here for the audit ledger
+    # and the Diagnostic agent's reasoning_chain. Empty for non-reasoning models.
+    reasoning: str = ""
     raw: dict[str, Any] = field(default_factory=dict)
 
 
@@ -133,12 +137,14 @@ class LLMClient:
 
         resp = client.chat.completions.create(**kwargs)
         usage = resp.usage
+        message = resp.choices[0].message
         return LLMResponse(
-            text=resp.choices[0].message.content or "",
+            text=message.content or "",
             provider="groq",
             model=settings.groq_model,
             input_tokens=getattr(usage, "prompt_tokens", 0) or 0,
             output_tokens=getattr(usage, "completion_tokens", 0) or 0,
+            reasoning=getattr(message, "reasoning", None) or "",
         )
 
     def _ollama(
