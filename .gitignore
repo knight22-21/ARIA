@@ -216,3 +216,7 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# ARIA — internal planning / blueprint docs (not for public repo)
+project.md
+BUILD_PLAN.md
