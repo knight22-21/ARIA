@@ -9,8 +9,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.agents.orchestrator import orchestrate
 from app.core.config import settings
 from app.core.db import get_session
+from app.execution.outcome import track_outcomes
 from app.ingestion.scenarios import build_scenario, scenario_names
 from app.ingestion.service import ingest_payment_event
+from app.models import enums
 from app.schemas.payment import PaymentEventIn
 
 router = APIRouter(prefix="/dev", tags=["dev"])
@@ -80,3 +82,33 @@ async def inject(req: InjectRequest, session: AsyncSession = Depends(get_session
                 "reason": state.escalation.reason_escalated,
             }
     return resp
+
+
+class CaptureRequest(BaseModel):
+    """Simulate a successful payment (drives outcome attribution)."""
+
+    customer_id: str
+    amount_paise: int
+    currency: str = "INR"
+
+
+@router.post("/capture")
+async def capture(req: CaptureRequest, session: AsyncSession = Depends(get_session)) -> dict:
+    """Inject a payment.captured event for a customer (no risk event created)."""
+    _guard()
+    payload = PaymentEventIn(
+        gateway=enums.Gateway.synthetic,
+        event_type=enums.EventType.payment_captured,
+        amount_paise=req.amount_paise,
+        currency=req.currency,
+        customer_id=req.customer_id,
+    )
+    pe, _ = await ingest_payment_event(session, payload, inline=True)
+    return {"payment_event_id": str(pe.event_id) if pe else None, "event_type": "payment_captured"}
+
+
+@router.post("/run-outcome-tracker")
+async def run_outcome_tracker(session: AsyncSession = Depends(get_session)) -> dict:
+    """Run the Outcome Tracker once (Celery Beat runs this on a schedule in prod)."""
+    _guard()
+    return await track_outcomes(session)

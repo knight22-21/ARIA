@@ -24,6 +24,16 @@ celery_app.conf.update(
     # RedBeat scheduler for reliable, Redis-backed periodic tasks.
     redbeat_redis_url=settings.redis_url,
     beat_scheduler="redbeat.RedBeatScheduler",
+    # Task modules the worker imports on boot (avoids import cycles at module load).
+    imports=(
+        "app.tasks.detection",
+        "app.tasks.orchestration",
+        "app.tasks.outcome",
+    ),
+    # The Outcome Tracker sweeps for attributable recoveries on a short cadence.
+    beat_schedule={
+        "outcome-tracker": {"task": "aria.track_outcomes", "schedule": 30.0},
+    },
 )
 
 

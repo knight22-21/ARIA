@@ -139,6 +139,13 @@ async def orchestrate(session: AsyncSession, risk_event_id: uuid.UUID) -> Orches
         state.intervention = interv_result
         state.plan_id = plan.plan_id
         risk.status = enums.RiskStatus.in_progress
+
+        # ---- Node: Execute ----
+        from app.execution.dispatcher import execute_plan
+
+        await execute_plan(session, plan.plan_id)
+        # Re-attach risk to this session (execute_plan committed) before finishing.
+        risk = await session.get(RiskEvent, risk.risk_event_id)
         state.outcome = "proceeded"
         return await _finish(session, risk, state)
     finally:

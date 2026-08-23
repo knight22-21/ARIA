@@ -27,6 +27,14 @@ log = get_logger(__name__)
 
 RISK_THRESHOLD = 0.40
 
+# Successful/neutral events never produce a RiskEvent (they drive outcome tracking).
+_NON_RISK_EVENTS = {
+    enums.EventType.payment_captured,
+    enums.EventType.subscription_charged,
+    enums.EventType.mandate_confirmed,
+    enums.EventType.checkout_created,
+}
+
 # Event types that represent a failure/at-risk signal.
 _FAILURE_EVENTS = {
     enums.EventType.payment_failed,
@@ -98,6 +106,10 @@ async def run_detection(session: AsyncSession, payment_event_id: uuid.UUID) -> R
     pe = await session.get(PaymentEvent, payment_event_id)
     if pe is None:
         log.warning("detection.missing_payment_event", payment_event_id=str(payment_event_id))
+        return None
+
+    # Successful/neutral events are not risks; they feed the Outcome Tracker.
+    if pe.event_type in _NON_RISK_EVENTS:
         return None
 
     now = datetime.now(UTC)
