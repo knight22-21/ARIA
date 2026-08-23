@@ -12,6 +12,7 @@ one-time warning — so the app still boots without secrets. Never run prod with
 from __future__ import annotations
 
 import base64
+import hashlib
 import os
 
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
@@ -76,6 +77,17 @@ def decrypt_field(stored: str | None) -> str | None:
     blob = base64.b64decode(stored[len(_PREFIX) :])
     nonce, ct = blob[:_NONCE_BYTES], blob[_NONCE_BYTES:]
     return AESGCM(_KEY).decrypt(nonce, ct, None).decode()
+
+
+def hash_identifier(value: str | None) -> str | None:
+    """Stable SHA-256 of a normalized phone/email — used for DNC lookups.
+
+    Storing the hash (not the raw value) lets us match DNC entries without keeping
+    another copy of plaintext PII.
+    """
+    if not value:
+        return None
+    return hashlib.sha256(value.strip().lower().encode()).hexdigest()
 
 
 class EncryptedString(TypeDecorator):

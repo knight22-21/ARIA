@@ -6,6 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.agents.orchestrator import orchestrate
 from app.core.config import settings
 from app.core.db import get_session
 from app.ingestion.scenarios import build_scenario, scenario_names
@@ -46,10 +47,36 @@ async def inject(req: InjectRequest, session: AsyncSession = Depends(get_session
         raise HTTPException(status_code=400, detail="provide 'scenario' or 'event'")
 
     pe, risk = await ingest_payment_event(session, payload, inline=req.inline)
-    return {
+
+    # Inline path also drives the agent pipeline so a single call shows the full run.
+    state = None
+    if req.inline and risk is not None:
+        state = await orchestrate(session, risk.risk_event_id)
+
+    resp: dict = {
         "payment_event_id": str(pe.event_id) if pe else None,
         "risk_event_id": str(risk.risk_event_id) if risk else None,
         "risk_score": risk.risk_score if risk else None,
         "workflow_type": risk.workflow_type.value if risk else None,
         "duplicate": pe is None,
     }
+    if state is not None:
+        resp["outcome"] = state.outcome
+        if state.diagnosis:
+            resp["diagnosis"] = {
+                "root_cause_category": state.diagnosis.root_cause_category,
+                "confidence": state.diagnosis.confidence,
+                "recommended_intervention_class": state.diagnosis.recommended_intervention_class,
+            }
+        if state.intervention:
+            resp["intervention"] = {
+                "action_type": state.intervention.action_type.value,
+                "channel": state.intervention.channel.value if state.intervention.channel else None,
+                "message_preview": (state.intervention.message_content or "")[:160],
+            }
+        if state.escalation:
+            resp["escalation"] = {
+                "urgency": state.escalation.urgency.value,
+                "reason": state.escalation.reason_escalated,
+            }
+    return resp
