@@ -37,6 +37,11 @@ def detect_task(self, payment_event_id: str) -> str | None:  # noqa: ANN001
     try:
         risk_id = asyncio.run(_run(payment_event_id))
         log.info("detect_task.done", payment_event_id=payment_event_id, risk_event_id=risk_id)
+        # Chain into the agent pipeline when an at-risk event was created.
+        if risk_id:
+            from app.tasks.orchestration import orchestrate_task
+
+            orchestrate_task.delay(risk_id)
         return risk_id
     except Exception as exc:  # noqa: BLE001
         log.error("detect_task.error", payment_event_id=payment_event_id, error=str(exc))
