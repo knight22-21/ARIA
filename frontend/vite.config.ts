@@ -13,8 +13,9 @@ export default defineConfig({
     port: 5173,
     proxy: {
       // Dashboard calls the FastAPI backend under /api during dev.
+      // Override the target with VITE_API_TARGET if the API isn't on :8000.
       "/api": {
-        target: "http://localhost:8000",
+        target: process.env.VITE_API_TARGET || "http://localhost:8000",
         changeOrigin: true,
         rewrite: (p) => p.replace(/^\/api/, ""),
       },
