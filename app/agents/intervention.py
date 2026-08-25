@@ -6,11 +6,12 @@ from datetime import UTC, datetime, timedelta
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.agents.hinglish import build_message_guidance
 from app.agents.structured import run_structured
 from app.core.audit import write_audit_event
 from app.core.logging import get_logger
 from app.models import enums
-from app.models.entities import Diagnosis, InterventionPlan, RiskEvent
+from app.models.entities import Diagnosis, InterventionPlan, PaymentEvent, RiskEvent
 from app.schemas.agent import DiagnosisResult, InterventionResult
 
 log = get_logger(__name__)
@@ -39,6 +40,8 @@ async def run_intervention(
     diagnosis: Diagnosis,
     diagnosis_result: DiagnosisResult,
     merchant_config: dict,
+    *,
+    human_approved: bool = False,
 ) -> tuple[InterventionResult, InterventionPlan]:
     channels = merchant_config.get("channels", {})
     allowed_channels = [
@@ -53,6 +56,21 @@ async def run_intervention(
     ceiling_inr = thresholds.get("auto_action_amount_ceiling_paise", 5_000_000) // 100
     language = "hinglish" if merchant_config.get("hinglish_mode") else "english"
 
+    # B2B/enterprise cases use a more formal tone; retail is casual.
+    tier = (
+        "enterprise"
+        if risk_event.workflow_type == enums.WorkflowType.b2b_receivable
+        else "retail"
+    )
+
+    # Aging bucket (B2B) is stashed on the payment event's method dict by the scanner.
+    pe = (
+        await session.get(PaymentEvent, risk_event.payment_event_id)
+        if risk_event.payment_event_id
+        else None
+    )
+    aging_bucket = ((pe.payment_method if pe else {}) or {}).get("aging_bucket", "")
+
     context = {
         "root_cause_category": diagnosis_result.root_cause_category,
         "confidence": diagnosis_result.confidence,
@@ -66,6 +84,9 @@ async def run_intervention(
         "auto_action_ceiling_inr": ceiling_inr,
         "emi_enabled": merchant_config.get("discount_offer_enabled", True),
         "discount_enabled": merchant_config.get("discount_offer_enabled", True),
+        "aging_bucket": aging_bucket,
+        "human_approved": human_approved,
+        "hinglish_guidance": build_message_guidance(language, tier),
     }
 
     result, resp = run_structured("intervention_selector", InterventionResult, context)

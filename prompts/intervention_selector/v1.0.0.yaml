@@ -56,5 +56,14 @@ user_prompt_template: |
     auto_action_ceiling: ₹{{ auto_action_ceiling_inr }}
     emi_enabled: {{ emi_enabled }}
     discount_enabled: {{ discount_enabled }}
+  {% if aging_bucket %}
+  B2B invoice aging bucket: {{ aging_bucket }}
+  {% endif %}
+  {% if human_approved %}
+  NOTE: A human reviewer has APPROVED autonomous action on this case. Do NOT choose
+  escalate_human — select a concrete recovery action (message, payment plan, retry, etc.)
+  even if the amount is above the usual ceiling.
+  {% endif %}
+  {{ hinglish_guidance }}
 
   Choose the single best action and (if a message) write it. Return only the JSON object.

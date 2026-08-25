@@ -112,3 +112,12 @@ async def run_outcome_tracker(session: AsyncSession = Depends(get_session)) -> d
     """Run the Outcome Tracker once (Celery Beat runs this on a schedule in prod)."""
     _guard()
     return await track_outcomes(session)
+
+
+@router.post("/run-promise-checks")
+async def run_promise_checks(session: AsyncSession = Depends(get_session)) -> dict:
+    """Run the Promise-to-Pay checks once (reminders + broken detection)."""
+    _guard()
+    from app.execution.promises import check_promises
+
+    return await check_promises(session)

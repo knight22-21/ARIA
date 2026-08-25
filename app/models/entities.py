@@ -12,6 +12,7 @@ from datetime import date, datetime
 
 from sqlalchemy import (
     BigInteger,
+    Boolean,
     Date,
     DateTime,
     Enum,
@@ -225,6 +226,33 @@ class DNCEntry(Base):
     added_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     added_by: Mapped[str | None] = mapped_column(String(128))
+
+
+class Invoice(Base):
+    """B2B invoice imported from CSV/ERP. The aging scanner emits RiskEvents from these."""
+
+    __tablename__ = "invoices"
+
+    id: Mapped[uuid.UUID] = _uuid_col()
+    merchant_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("merchants.merchant_id"), index=True, nullable=False
+    )
+    invoice_ref: Mapped[str] = mapped_column(String(128), index=True)  # merchant's invoice number
+    customer_id: Mapped[str] = mapped_column(String(128), index=True)
+    customer_name: Mapped[str | None] = mapped_column(String(255))
+    customer_email: Mapped[str | None] = mapped_column(EncryptedString(512))
+    customer_phone: Mapped[str | None] = mapped_column(EncryptedString(512))
+    amount_paise: Mapped[int] = mapped_column(BigInteger, default=0)
+    currency: Mapped[str] = mapped_column(String(8), default="INR")
+    due_date: Mapped[date] = mapped_column(Date, index=True)
+    status: Mapped[enums.InvoiceStatus] = mapped_column(
+        _enum(enums.InvoiceStatus, "invoice_status"), default=enums.InvoiceStatus.open, index=True
+    )
+    # Dedup guard: at most one active RiskEvent per invoice at a time.
+    has_active_risk: Mapped[bool] = mapped_column(Boolean, default=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
 
 
 class Outbox(Base):

@@ -168,13 +168,40 @@ class VoiceScriptExecutor(Executor):
     ) -> ExecutionResult:
         if dry_run:
             return ExecutionResult(enums.PlanStatus.planned, "dry-run", self.estimate_cost(plan))
+
+        # Generate a warm Hinglish call script + SSML (preview only, no call placed).
+        from app.agents.hinglish import generate_voice_script
+        from app.models.entities import Diagnosis
+
+        diag = (
+            await session.execute(
+                select(Diagnosis).where(Diagnosis.risk_event_id == risk.risk_event_id)
+            )
+        ).scalars().first()
+        tier = (
+            "enterprise"
+            if risk.workflow_type == enums.WorkflowType.b2b_receivable
+            else "retail"
+        )
+        try:
+            vs = generate_voice_script(
+                tier=tier,
+                amount_inr=risk.amount_at_risk_paise // 100,
+                context=risk.workflow_type.value,
+                root_cause=diag.root_cause_category if diag else "unknown",
+            )
+            body = f"{vs.script}\n\n--- SSML ---\n{vs.ssml}"
+        except Exception as exc:  # noqa: BLE001 — fall back to any pre-written content
+            log.warning("voice_script.generation_failed", error=str(exc))
+            body = plan.message_content or "(voice script unavailable)"
+
         outbox = Outbox(
             merchant_id=risk.merchant_id,
             plan_id=plan.plan_id,
             channel=enums.Channel.ivr,
             recipient=payment_event.customer_phone if payment_event else None,
-            subject="voice script",
-            body=plan.message_content,
+            subject="hinglish voice script (preview)",
+            body=body,
             status=enums.OutboxStatus.queued,
             cost_paise=self.estimate_cost(plan),
         )

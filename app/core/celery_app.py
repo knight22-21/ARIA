@@ -29,10 +29,13 @@ celery_app.conf.update(
         "app.tasks.detection",
         "app.tasks.orchestration",
         "app.tasks.outcome",
+        "app.tasks.promises",
     ),
-    # The Outcome Tracker sweeps for attributable recoveries on a short cadence.
     beat_schedule={
+        # Outcome Tracker sweeps for attributable recoveries on a short cadence.
         "outcome-tracker": {"task": "aria.track_outcomes", "schedule": 30.0},
+        # Promise-to-Pay reminders + broken-promise detection (hourly in prod).
+        "ptp-checker": {"task": "aria.check_promises", "schedule": 3600.0},
     },
 )
 

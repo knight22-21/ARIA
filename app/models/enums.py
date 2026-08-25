@@ -96,3 +96,9 @@ class OutboxStatus(StrEnum):
     failed = "failed"
     bounced = "bounced"
     read = "read"
+
+
+class InvoiceStatus(StrEnum):
+    open = "open"
+    paid = "paid"
+    written_off = "written_off"

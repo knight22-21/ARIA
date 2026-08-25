@@ -6,7 +6,16 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app import __version__
-from app.api import dev, health, recovery, risk_events, webhooks
+from app.api import (
+    dev,
+    escalations,
+    health,
+    invoices,
+    ptp,
+    recovery,
+    risk_events,
+    webhooks,
+)
 from app.core.config import settings
 from app.core.db import Base, engine
 from app.core.logging import configure_logging, get_logger
@@ -56,6 +65,9 @@ app.include_router(webhooks.router)
 app.include_router(dev.router)
 app.include_router(risk_events.router)
 app.include_router(recovery.router)
+app.include_router(invoices.router)
+app.include_router(ptp.router)
+app.include_router(escalations.router)
 
 
 @app.get("/", tags=["meta"])

@@ -47,6 +47,14 @@ class InterventionResult(BaseModel):
 # ---- Escalation agent -----------------------------------------------
 
 
+class VoiceScriptResult(BaseModel):
+    """Hinglish voice call script + SSML preview (no call placed)."""
+
+    script: str
+    ssml: str
+    tone_notes: str = ""
+
+
 class UrgencyLevel(StrEnum):
     P1 = "P1"
     P2 = "P2"

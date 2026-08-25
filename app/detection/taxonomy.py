@@ -45,6 +45,8 @@ _TAXONOMY: dict[str, ErrorClass] = {
     "stolen_card": ErrorClass("hard_decline", 0.95, False),
     "fraud_suspected": ErrorClass("fraud", 0.95, False),
     "payment_cancelled": ErrorClass("cancelled", 0.20, False),
+    # B2B receivables — an overdue invoice is inherently at-risk (aging is the signal).
+    "invoice_overdue": ErrorClass("receivable", 0.60, True),
 }
 
 _DEFAULT = ErrorClass("unknown", 0.40, True)
