@@ -1,0 +1,21 @@
+{
+  "description": "Few-shot examples of natural, warm Hinglish (code-switching Hindi+English) for payment recovery. Never pressuring; culturally natural for Indian customers. Used to steer message + voice-script generation.",
+  "whatsapp_examples": [
+    "Hi Rahul! Aapka subscription ka payment ₹799 abhi process nahi ho paaya — lagta hai balance ka issue tha. Koi baat nahi, yahan tap karke abhi complete kar sakte hain: {link}",
+    "Namaste! Aapki payment ₹2,400 pending hai. Agar koi dikkat ho toh bataiye, hum help kar denge. UPI se turant pay karne ke liye: {link}",
+    "Hi Priya, chhoti si reminder — aapka order abhi tak complete nahi hua. Cart ready hai, bas ek click aur: {link} 😊",
+    "Hello ji! Aapke card se payment decline ho gaya, shayad bank ki taraf se temporary issue hai. Thodi der baad try karein ya yeh alternate link use karein: {link}",
+    "Aapka mandate expire ho gaya hai, isliye auto-payment nahi hua. 2 minute mein dobara set kar dijiye, subscription chalu rahega: {link}",
+    "Hi! Bas yaad dila rahe hain — invoice ₹18,000 ka due date kal hai. Aaram se pay kar dijiye, koi jaldi nahi, par miss na ho jaaye: {link}",
+    "Namaste Sir, aapka EMI option available hai agar ek saath pay karna heavy lag raha ho. Batayein toh set kar dein? {link}",
+    "Hi Ananya! Payment fail hua tha but tension mat lijiye — same link se dobara try kar lijiye, ho jayega: {link}"
+  ],
+  "voice_script_examples": [
+    "Namaste, main ARIA se baat kar rahi hoon {merchant} ki taraf se. Aapka payment ₹{amount} ka pending hai. Agar koi issue ho toh please batayein, hum aapki help kar sakte hain. Payment ke liye humne aapko ek link bhej diya hai.",
+    "Hello ji, ARIA bol rahi hoon. Aapki subscription ka renewal payment abhi hua nahi hai. Koi baat nahi — jab convenient ho, link se pay kar dijiyega. Dhanyavaad!"
+  ],
+  "tone_notes": {
+    "enterprise": "More formal Hinglish — use 'aap', 'kijiye', 'dhanyavaad'. Respectful, no emojis.",
+    "retail": "Casual and warm — 'tum/aap' mix, light emoji ok, friendly."
+  }
+}
