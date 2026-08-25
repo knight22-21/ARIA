@@ -1,0 +1,4 @@
+invoice_id,customer_name,customer_email,customer_phone,amount,due_date,currency
+INV-2026-0042,Bright Retail Pvt Ltd,ap@brightretail.example.com,+919812300042,40000,2026-07-10,INR
+INV-2026-0088,BigCorp Enterprises,finance@bigcorp.example.com,+919812300088,230000,2026-06-15,INR
+INV-2026-0091,Sunrise Traders,accounts@sunrise.example.com,+919812300091,18500,2026-08-05,INR
