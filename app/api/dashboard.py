@@ -9,7 +9,15 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.db import get_session
-from app.models.entities import AuditEvent, Outbox, RiskEvent
+from app.models.entities import (
+    AuditEvent,
+    Diagnosis,
+    InterventionPlan,
+    Outbox,
+    PaymentEvent,
+    PromiseToPay,
+    RiskEvent,
+)
 
 router = APIRouter(prefix="/v1", tags=["dashboard"])
 
@@ -70,3 +78,86 @@ async def audit_query(
         }
         for a in rows
     ]
+
+
+@router.get("/customers/{customer_id}/export")
+async def data_subject_export(
+    customer_id: str, session: AsyncSession = Depends(get_session)
+) -> dict:
+    """DPDP-style data-subject access: export everything ARIA holds for a customer.
+
+    PII is decrypted here by design — this endpoint fulfils the customer's own
+    right of access. Restrict to authorized callers in production.
+    """
+    pe_rows = (
+        await session.execute(
+            select(PaymentEvent).where(PaymentEvent.customer_id == customer_id)
+        )
+    ).scalars().all()
+    pe_ids = [p.event_id for p in pe_rows]
+
+    risks = (
+        (
+            await session.execute(
+                select(RiskEvent).where(RiskEvent.payment_event_id.in_(pe_ids))
+            )
+        ).scalars().all()
+        if pe_ids
+        else []
+    )
+    risk_ids = [r.risk_event_id for r in risks]
+
+    diagnoses = (
+        (
+            await session.execute(select(Diagnosis).where(Diagnosis.risk_event_id.in_(risk_ids)))
+        ).scalars().all()
+        if risk_ids
+        else []
+    )
+    plans = (
+        (
+            await session.execute(
+                select(InterventionPlan).where(InterventionPlan.risk_event_id.in_(risk_ids))
+            )
+        ).scalars().all()
+        if risk_ids
+        else []
+    )
+    ptps = (
+        await session.execute(select(PromiseToPay).where(PromiseToPay.customer_id == customer_id))
+    ).scalars().all()
+
+    return {
+        "customer_id": customer_id,
+        "exported_at": None,  # stamp at the edge if needed
+        "payment_events": [
+            {
+                "event_id": str(p.event_id),
+                "event_type": p.event_type.value,
+                "amount_paise": p.amount_paise,
+                "phone": p.customer_phone,  # decrypted
+                "email": p.customer_email,  # decrypted
+                "received_at": p.received_at.isoformat(),
+            }
+            for p in pe_rows
+        ],
+        "risk_events": [
+            {
+                "risk_event_id": str(r.risk_event_id),
+                "workflow": r.workflow_type.value,
+                "status": r.status.value,
+            }
+            for r in risks
+        ],
+        "diagnoses": [
+            {"root_cause": d.root_cause_category, "confidence": d.confidence} for d in diagnoses
+        ],
+        "interventions": [
+            {"action_type": pl.action_type.value, "message_content": pl.message_content}
+            for pl in plans
+        ],
+        "promises_to_pay": [
+            {"promised_amount_paise": t.promised_amount_paise, "status": t.status.value}
+            for t in ptps
+        ],
+    }
