@@ -9,7 +9,30 @@ surfaces; reasons over root cause with an LLM diagnostic chain; executes bounded
 reversible recovery actions; measures actual money recovered as a P&L; and proves
 every decision in an append-only audit ledger.
 
-See [`BUILD_PLAN.md`](./BUILD_PLAN.md) for the phased 10-day build plan.
+See [`BUILD_PLAN.md`](./BUILD_PLAN.md) for the phased build plan and [`DEMO.md`](./DEMO.md)
+for the 15-minute evaluator walkthrough.
+
+## Architecture
+
+```
+Razorpay test webhooks ─┐
+                        ├─► Ingestion ─► Detection ─► Orchestrator ─► Execution ─► Outcome Tracker
+Synthetic injector  ────┘   (idempotent) (6-signal    (CheckPolicy    (bounded     (attribution →
+                                          risk score)   → Diagnose      action        Recovery P&L)
+                                                         → Intervene     executors)
+                                                         → Execute|Escalate)
+                                                              │
+                        Postgres (state + append-only audit ledger)  ·  Redis (idempotency, locks, bank-rate)
+                                                              │
+                                          FastAPI REST  ◄──►  React dashboard (Command Center, Reasoning
+                                                              Stream, Action Queue, P&L Sankey, Audit, Outbox)
+```
+
+- **Agents** (Groq/Ollama, provider-agnostic): a deterministic **stopping-rules gate** runs
+  first, then a **Diagnostic** agent (visible chain-of-thought), an **Intervention Selector**
+  (bounded action space + Hinglish generation), and an **Escalation** agent — wired as an
+  explicit, fully-audited state machine.
+- **Every decision writes to the audit ledger** with a SHA-256 checksum.
 
 ---
 
@@ -42,20 +65,26 @@ cp .env.example .env
 # Generate a PII key:  python -c "import secrets;print(secrets.token_urlsafe(32))"
 ```
 
-### 2. Run everything (Docker)
+### 2. Datastores + schema + demo data
 ```bash
-docker compose up --build
-# API:   http://localhost:8000      Docs: http://localhost:8000/docs
-# Health: http://localhost:8000/health   Readiness: http://localhost:8000/health/ready
+docker compose up -d postgres redis            # host ports 5433 (pg) / 6380 (redis)
+.venv/Scripts/python -m alembic upgrade head   # create schema
+.venv/Scripts/python scripts/seed.py           # ~6s: 30-day backdrop, no LLM calls
 ```
-> Ollama (if used) runs on the **host**; containers reach it via `host.docker.internal:11434`.
 
-### 3. Frontend (dev)
+### 3. API + dashboard
 ```bash
-cd frontend
-npm install
-npm run dev        # http://localhost:5173  (proxies /api → backend)
+# API — if :8000 is taken locally, use another port and point the dashboard at it:
+.venv/Scripts/python -m uvicorn app.main:app --port 8010
+
+cd frontend && npm install
+VITE_API_TARGET=http://localhost:8010 npm run dev   # http://localhost:5173
 ```
+Open **http://localhost:5173**, hit **Fire event** on the Command Center, then click a Risk
+Event to watch the reasoning stream. Full flow in [`DEMO.md`](./DEMO.md).
+
+> Ollama (if used) runs on the **host**; containers reach it via `host.docker.internal:11434`.
+> To run the whole stack (api + worker + beat) in Docker instead: `docker compose up --build`.
 
 ---
 
@@ -92,30 +121,33 @@ alembic upgrade head            # apply migrations
 
 ```
 app/
-  api/         FastAPI routers (health; recovery/audit/config land in later phases)
-  agents/      LLM client + (Phase 2) orchestrator & sub-agents
-  detection/   (Phase 1) risk scoring & detection engine
-  execution/   (Phase 3) bounded action executors
-  models/      SQLAlchemy ORM models
-  schemas/     Pydantic API/agent contracts
-  core/        config · logging · db · celery
-alembic/       migrations
-prompts/       (Phase 2) versioned YAML prompts
+  api/         FastAPI routers (health, webhooks, dev, risk-events, recovery,
+               invoices, ptp, escalations, outbox, dashboard)
+  agents/      provider-agnostic LLM client, orchestrator, sub-agents, policy, prompts
+  detection/   6-signal risk scorer, taxonomy, bank-rate, workflow classifier, aging scanner
+  execution/   bounded action executors, dispatcher, outcome tracker, PTP checks
+  analytics/   Recovery P&L computation
+  ingestion/   dual-path ingestion, normalizer, scenarios, invoice CSV import
+  integrations/ Razorpay signature verification
+  tasks/       Celery tasks (detection, orchestration, outcome, promises)
+  models/      SQLAlchemy ORM models  ·  schemas/  Pydantic contracts
+  core/        config · logging · db · celery · crypto · audit · redis · bootstrap
+alembic/       migrations          prompts/  versioned YAML prompts
 frontend/      React + Vite dashboard
-scripts/       dev utilities (check_llm, seed, inject …)
+scripts/       check_llm · inject · seed · sample_invoices.csv
 tests/
 ```
 
-## Project phases
+## Project phases — all complete
 
-| Phase | Theme |
-|---|---|
-| **P0** | Scaffolding & infra ✅ |
-| P1 | Ingestion + detection |
-| P2 | Agent intelligence (reasoning) |
-| P3 | Execution + Recovery P&L |
-| P4 | Hinglish + B2B receivables + human-in-loop |
-| P5 | Dashboard (design-led) |
-| P6 | Seed data, demo polish |
+| Phase | Theme | Status |
+|---|---|---|
+| P0 | Scaffolding & infra | ✅ |
+| P1 | Dual-path ingestion + detection engine | ✅ |
+| P2 | Agent intelligence (visible reasoning) | ✅ |
+| P3 | Execution + Recovery P&L | ✅ |
+| P4 | Hinglish + B2B receivables + human-in-loop | ✅ |
+| P5 | Design-led dashboard | ✅ (UI polish pass pending) |
+| P6 | Seed data, demo script, docs | ✅ |
 
 Full detail in [`BUILD_PLAN.md`](./BUILD_PLAN.md).
