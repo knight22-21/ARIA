@@ -9,34 +9,36 @@ import { formatINR } from "@/lib/utils";
 
 export default function RiskDetail() {
   const { id = "" } = useParams();
-  const { data, isLoading } = useQuery({
-    queryKey: ["trail", id],
-    queryFn: () => api.trail(id),
-  });
+  const { data, isLoading } = useQuery({ queryKey: ["trail", id], queryFn: () => api.trail(id) });
 
   return (
     <div className="space-y-6">
-      <Link to="/risk" className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
+      <Link
+        to="/risk"
+        className="inline-flex items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground"
+      >
         <ArrowLeft className="h-4 w-4" /> Risk Events
       </Link>
 
       {isLoading ? (
         <div className="grid gap-6 lg:grid-cols-3">
-          <Skeleton className="h-96 lg:col-span-2" />
-          <Skeleton className="h-96" />
+          <Skeleton className="h-96 rounded-2xl lg:col-span-2" />
+          <Skeleton className="h-96 rounded-2xl" />
         </div>
       ) : !data ? (
         <EmptyState title="Not found" />
       ) : (
         <>
           <div className="flex flex-wrap items-center gap-3">
-            <h1 className="text-xl font-bold tracking-tight">
+            <h1 className="text-xl font-semibold capitalize tracking-tight">
               {data.risk_event.workflow_type.replace(/_/g, " ")}
             </h1>
             <Badge label={data.risk_event.status} tone={data.risk_event.status} />
             <span className="text-sm text-muted-foreground">
-              {formatINR(data.risk_event.amount_at_risk_paise)} at risk · score{" "}
-              {data.risk_event.risk_score.toFixed(2)}
+              <span className="font-semibold text-foreground">
+                {formatINR(data.risk_event.amount_at_risk_paise)}
+              </span>{" "}
+              at risk · risk score {data.risk_event.risk_score.toFixed(2)}
             </span>
           </div>
 
@@ -56,7 +58,7 @@ export default function RiskDetail() {
 
             <Card className="h-full">
               <CardTitle>Audit Lifecycle</CardTitle>
-              <div className="mt-4">
+              <div className="mt-5">
                 <AuditTimeline items={data.audit} />
               </div>
             </Card>

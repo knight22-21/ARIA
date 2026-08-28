@@ -2,18 +2,28 @@ import { useQuery } from "@tanstack/react-query";
 import { ResponsiveSankey } from "@nivo/sankey";
 import { Bar, BarChart, Cell, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { api } from "@/lib/api";
-import { Card, CardTitle, EmptyState, Skeleton } from "@/components/ui";
+import { Card, CardTitle, EmptyState, PageHeader, Skeleton } from "@/components/ui";
 
 const SANKEY_THEME = {
-  text: { fill: "hsl(215 20% 62%)", fontSize: 11 },
-  tooltip: { container: { background: "hsl(222 40% 8%)", color: "#fff", fontSize: 12, borderRadius: 8 } },
+  text: { fill: "hsl(218 12% 56%)", fontSize: 11, fontFamily: "Inter, sans-serif" },
+  tooltip: {
+    container: {
+      background: "hsl(224 20% 9%)",
+      color: "#fff",
+      fontSize: 12,
+      borderRadius: 10,
+      border: "1px solid hsl(220 14% 16%)",
+    },
+  },
 };
+// Brighter, higher-saturation palette so nodes/links read on the dark canvas.
+const SANKEY_COLORS = ["#34d399", "#a78bfa", "#38bdf8", "#22d3ee", "#fbbf24", "#fb7185", "#94a3b8"];
 
 function Metric({ label, value, tone = "text-foreground" }: { label: string; value: string; tone?: string }) {
   return (
     <div>
-      <div className="text-[11px] uppercase tracking-wider text-muted-foreground">{label}</div>
-      <div className={`mt-1 text-2xl font-bold tabular-nums ${tone}`}>{value}</div>
+      <div className="text-[11px] uppercase tracking-[0.1em] text-muted-foreground">{label}</div>
+      <div className={`mt-1.5 text-2xl font-bold tabular-nums ${tone}`}>{value}</div>
     </div>
   );
 }
@@ -29,18 +39,16 @@ export default function RecoveryPnL() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">Recovery P&L</h1>
-        <p className="text-sm text-muted-foreground">
-          A true profit &amp; loss for the recovery operation — attributed, not vanity metrics.
-        </p>
-      </div>
+      <PageHeader
+        title="Recovery P&L"
+        subtitle="A true profit & loss for the recovery operation — attributed, not vanity metrics."
+      />
 
       {pnl.isLoading ? (
-        <Skeleton className="h-28" />
+        <Skeleton className="h-28 rounded-2xl" />
       ) : (
         <Card>
-          <div className="grid grid-cols-2 gap-6 md:grid-cols-4 lg:grid-cols-6">
+          <div className="grid grid-cols-2 gap-6 md:grid-cols-3 lg:grid-cols-6">
             <Metric label="At Risk" value={rupee(pnl.data?.gross_revenue_at_risk)} />
             <Metric label="Recovered" value={rupee(pnl.data?.recovered.attributed)} tone="text-primary" />
             <Metric label="Cost" value={rupee(pnl.data?.cost.total)} tone="text-muted-foreground" />
@@ -52,24 +60,27 @@ export default function RecoveryPnL() {
       )}
 
       <Card>
-        <CardTitle>Recovery Flow — ₹ at risk → workflow → outcome</CardTitle>
-        <div className="mt-2 h-[24rem]">
+        <CardTitle>Recovery Flow · ₹ at risk → workflow → outcome</CardTitle>
+        <div className="mt-3 h-[24rem]">
           {sankey.isLoading ? (
-            <Skeleton className="h-full" />
+            <Skeleton className="h-full rounded-xl" />
           ) : hasSankey ? (
             <ResponsiveSankey
               data={sankey.data!}
-              margin={{ top: 10, right: 140, bottom: 10, left: 10 }}
+              margin={{ top: 12, right: 150, bottom: 12, left: 12 }}
               align="justify"
-              colors={["#10b981", "#0ea5e9", "#38bdf8", "#f59e0b", "#ef4444", "#64748b"]}
+              colors={SANKEY_COLORS}
               nodeOpacity={1}
-              nodeThickness={16}
+              nodeThickness={18}
               nodeBorderWidth={0}
-              linkOpacity={0.35}
-              linkHoverOpacity={0.6}
+              nodeBorderRadius={3}
+              linkOpacity={0.55}
+              linkHoverOpacity={0.85}
+              linkBlendMode="normal"
               enableLinkGradient
               labelPosition="outside"
-              labelPadding={10}
+              labelPadding={12}
+              labelTextColor="hsl(210 22% 96%)"
               theme={SANKEY_THEME}
             />
           ) : (
@@ -84,16 +95,22 @@ export default function RecoveryPnL() {
           {barData.length ? (
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={barData} margin={{ top: 8, right: 8, bottom: 8, left: 8 }}>
-                <XAxis dataKey="name" tick={{ fill: "hsl(215 20% 62%)", fontSize: 11 }} axisLine={false} tickLine={false} />
-                <YAxis tick={{ fill: "hsl(215 20% 62%)", fontSize: 11 }} axisLine={false} tickLine={false} />
+                <XAxis dataKey="name" tick={{ fill: "hsl(218 12% 56%)", fontSize: 11 }} axisLine={false} tickLine={false} />
+                <YAxis tick={{ fill: "hsl(218 12% 56%)", fontSize: 11 }} axisLine={false} tickLine={false} width={70} tickFormatter={(v) => `₹${(v / 1000).toFixed(0)}k`} />
                 <Tooltip
-                  cursor={{ fill: "hsl(217 33% 14% / 0.5)" }}
-                  contentStyle={{ background: "hsl(222 40% 8%)", border: "1px solid hsl(217 33% 16%)", borderRadius: 8, fontSize: 12 }}
+                  cursor={{ fill: "hsl(220 16% 13% / 0.4)" }}
+                  contentStyle={{ background: "hsl(224 20% 9%)", border: "1px solid hsl(220 14% 16%)", borderRadius: 10, fontSize: 12 }}
                   formatter={(v: number) => [`₹${v.toLocaleString("en-IN")}`, "attributed"]}
                 />
                 <Bar dataKey="value" radius={[6, 6, 0, 0]}>
-                  {barData.map((_, i) => <Cell key={i} fill="#10b981" />)}
+                  {barData.map((_, i) => <Cell key={i} fill="url(#barGrad)" />)}
                 </Bar>
+                <defs>
+                  <linearGradient id="barGrad" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#34d399" />
+                    <stop offset="100%" stopColor="#059669" stopOpacity={0.7} />
+                  </linearGradient>
+                </defs>
               </BarChart>
             </ResponsiveContainer>
           ) : (
