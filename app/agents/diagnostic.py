@@ -77,6 +77,7 @@ async def run_diagnostic(
         merchant_id=risk_event.merchant_id,
         entity_type="Diagnosis",
         entity_id=diagnosis.diagnosis_id,
+        correlation_id=risk_event.risk_event_id,
         payload={
             "root_cause_category": result.root_cause_category,
             "confidence": result.confidence,

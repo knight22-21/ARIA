@@ -131,6 +131,7 @@ async def run_intervention(
         merchant_id=risk_event.merchant_id,
         entity_type="InterventionPlan",
         entity_id=plan.plan_id,
+        correlation_id=risk_event.risk_event_id,
         payload={
             "action_type": result.action_type.value,
             "channel": channel.value if channel else None,
