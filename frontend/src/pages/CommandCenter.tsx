@@ -79,6 +79,7 @@ function Kpi({
 }
 
 export default function CommandCenter() {
+  const [focusId, setFocusId] = useState<string | null>(null);
   const pnl = useQuery({ queryKey: ["pnl"], queryFn: api.pnl, refetchInterval: 4000 });
   const summary = useQuery({ queryKey: ["summary"], queryFn: api.summary, refetchInterval: 4000 });
 
@@ -109,7 +110,7 @@ export default function CommandCenter() {
 
       <div className="grid gap-6 lg:grid-cols-5">
         <div className="lg:col-span-3">
-          <Injector />
+          <Injector onFired={setFocusId} />
         </div>
         <Card className="lg:col-span-2">
           <CardTitle>Recovery Economics</CardTitle>
@@ -135,7 +136,7 @@ export default function CommandCenter() {
         </Card>
       </div>
 
-      <LiveFeed />
+      <LiveFeed focusId={focusId} onShowAll={() => setFocusId(null)} />
     </div>
   );
 }

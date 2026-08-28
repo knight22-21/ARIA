@@ -5,7 +5,7 @@ import { toast } from "sonner";
 import { api } from "@/lib/api";
 import { Button, Card, CardTitle, Select } from "@/components/ui";
 
-export function Injector() {
+export function Injector({ onFired }: { onFired?: (riskEventId: string) => void }) {
   const qc = useQueryClient();
   const [scenario, setScenario] = useState("");
   const { data } = useQuery({ queryKey: ["scenarios"], queryFn: api.scenarios });
@@ -24,6 +24,7 @@ export function Injector() {
         .filter(Boolean)
         .join(" ");
       toast.success(`Injected ${selected.replace(/_/g, " ")}`, { description: bits || undefined });
+      if (r.risk_event_id) onFired?.(r.risk_event_id);
       invalidate();
     },
     onError: (e: Error) => toast.error("Inject failed", { description: e.message }),
