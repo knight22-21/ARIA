@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { createBrowserRouter, RouterProvider } from "react-router-dom";
 import Layout from "@/components/Layout";
 import CommandCenter from "@/pages/CommandCenter";
@@ -7,6 +8,8 @@ import Escalations from "@/pages/Escalations";
 import RecoveryPnL from "@/pages/RecoveryPnL";
 import Outbox from "@/pages/Outbox";
 import AuditLedger from "@/pages/AuditLedger";
+import Login from "@/pages/Login";
+import { isAuthed } from "@/lib/auth";
 
 const router = createBrowserRouter([
   {
@@ -25,5 +28,7 @@ const router = createBrowserRouter([
 ]);
 
 export default function App() {
+  const [authed, setAuthed] = useState(isAuthed());
+  if (!authed) return <Login onSuccess={() => setAuthed(true)} />;
   return <RouterProvider router={router} />;
 }

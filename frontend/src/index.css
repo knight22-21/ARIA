@@ -3,43 +3,43 @@
 @tailwind utilities;
 
 /*
-  ARIA design tokens — premium dark fintech theme.
-  "Linear × Bloomberg terminal": deep slate canvas, emerald recovery accent,
-  amber risk, restrained and data-dense. shadcn-compatible HSL variables.
+  ARIA design system — refined dark fintech ("Linear × Ramp × Vercel").
+  Deep neutral-cool canvas · emerald = money/recovery · violet = AI/reasoning.
+  Layered depth, disciplined accents, motion-ready.
 */
 @layer base {
   :root {
-    --background: 222 47% 5%;
-    --foreground: 210 40% 96%;
+    --background: 225 24% 4.5%;
+    --surface: 224 22% 6.5%;
+    --foreground: 210 22% 94%;
 
-    --card: 222 40% 8%;
-    --card-foreground: 210 40% 96%;
+    --card: 224 20% 7.5%;
+    --card-foreground: 210 22% 94%;
 
-    --primary: 158 74% 44%; /* emerald — recovery / success accent */
-    --primary-foreground: 222 47% 6%;
+    --primary: 152 72% 45%; /* emerald — money / recovery */
+    --primary-foreground: 152 80% 6%;
 
-    --secondary: 217 33% 14%;
-    --secondary-foreground: 210 40% 96%;
+    --accent: 258 90% 68%; /* violet — AI / reasoning / interactive */
+    --accent-foreground: 258 60% 8%;
 
-    --muted: 217 33% 12%;
-    --muted-foreground: 215 20% 62%;
+    --secondary: 220 16% 13%;
+    --secondary-foreground: 210 22% 94%;
 
-    --accent: 199 89% 48%; /* cyan — interactive / info */
-    --accent-foreground: 222 47% 6%;
+    --muted: 220 16% 11%;
+    --muted-foreground: 218 12% 56%;
 
-    --border: 217 33% 16%;
-    --input: 217 33% 16%;
-    --ring: 158 74% 44%;
+    --border: 220 14% 14%;
+    --input: 220 14% 16%;
+    --ring: 258 90% 68%;
 
-    --success: 158 74% 44%;
-    --warning: 38 92% 55%;
-    --danger: 0 72% 55%;
-    --info: 199 89% 48%;
+    --success: 152 72% 45%;
+    --warning: 38 95% 56%;
+    --danger: 351 83% 61%;
+    --info: 200 92% 56%;
 
-    --radius: 0.75rem;
+    --radius: 0.85rem;
   }
 
-  /* Single dark theme for now; :root already dark. Kept for shadcn parity. */
   .dark {
   }
 
@@ -47,36 +47,106 @@
     @apply border-border;
   }
 
+  html {
+    scrollbar-gutter: stable;
+  }
+
   body {
     @apply bg-background text-foreground font-sans antialiased;
-    font-feature-settings: "cv11", "ss01";
-    /* Subtle radial glow to lift the flat canvas. */
+    font-feature-settings: "cv11", "ss01", "tnum" 0;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+    /* Layered ambient glows for depth — fixed so they don't scroll. */
     background-image:
-      radial-gradient(60rem 40rem at 85% -10%, hsl(158 74% 44% / 0.06), transparent),
-      radial-gradient(50rem 40rem at 0% 0%, hsl(199 89% 48% / 0.05), transparent);
+      radial-gradient(48rem 32rem at 78% -8%, hsl(258 90% 60% / 0.08), transparent 60%),
+      radial-gradient(42rem 30rem at 8% 4%, hsl(152 72% 45% / 0.06), transparent 55%),
+      radial-gradient(60rem 60rem at 50% 120%, hsl(200 92% 56% / 0.04), transparent 60%);
     background-attachment: fixed;
+  }
+
+  /* Refined scrollbars */
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    @apply rounded-full;
+    background: hsl(220 14% 20%);
+    border: 3px solid transparent;
+    background-clip: content-box;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: hsl(220 14% 28%);
+    background-clip: content-box;
+  }
+
+  h1, h2, h3 {
+    @apply tracking-tight;
+  }
+
+  /* Native <select> dropdown lists inherit OS colors (white-on-white on dark
+     themes). Force a readable dark palette on the options + closed control. */
+  select {
+    color-scheme: dark;
+  }
+  select option {
+    background-color: hsl(224 24% 8%);
+    color: hsl(210 22% 94%);
+  }
+}
+
+@layer components {
+  /* Elevated card: layered border + soft shadow + top highlight. */
+  .card-elevated {
+    @apply relative rounded-2xl border border-white/[0.06] bg-card/80 backdrop-blur-xl;
+    box-shadow:
+      0 1px 0 0 hsl(0 0% 100% / 0.04) inset,
+      0 1px 2px hsl(0 0% 0% / 0.3),
+      0 8px 30px -12px hsl(0 0% 0% / 0.5);
+  }
+  .card-elevated::before {
+    content: "";
+    @apply pointer-events-none absolute inset-x-0 top-0 h-px rounded-t-2xl;
+    background: linear-gradient(90deg, transparent, hsl(0 0% 100% / 0.12), transparent);
   }
 }
 
 @layer utilities {
   .glass {
-    @apply bg-card/60 backdrop-blur-xl border border-white/5;
+    @apply bg-card/70 backdrop-blur-xl border border-white/[0.06];
   }
   .text-gradient {
-    @apply bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent;
+    @apply bg-gradient-to-r from-primary via-primary to-accent bg-clip-text text-transparent;
   }
-  /* Skeleton shimmer for loading states. */
+  .text-gradient-ai {
+    @apply bg-gradient-to-r from-accent to-info bg-clip-text text-transparent;
+  }
+  .ring-focus {
+    @apply focus:outline-none focus-visible:ring-2 focus-visible:ring-ring/60 focus-visible:ring-offset-2 focus-visible:ring-offset-background;
+  }
+  /* Skeleton shimmer */
   .skeleton {
-    @apply relative overflow-hidden bg-muted/50 rounded-md;
+    @apply relative overflow-hidden rounded-lg bg-muted/60;
   }
   .skeleton::after {
-    @apply absolute inset-0 -translate-x-full animate-shimmer;
+    @apply absolute inset-0 -translate-x-full;
     content: "";
-    background: linear-gradient(
-      90deg,
-      transparent,
-      hsl(var(--foreground) / 0.06),
-      transparent
-    );
+    background: linear-gradient(90deg, transparent, hsl(var(--foreground) / 0.06), transparent);
+    animation: shimmer 1.6s infinite;
+  }
+  .grid-lines {
+    background-image:
+      linear-gradient(hsl(220 14% 14% / 0.5) 1px, transparent 1px),
+      linear-gradient(90deg, hsl(220 14% 14% / 0.5) 1px, transparent 1px);
+    background-size: 44px 44px;
+  }
+}
+
+@keyframes shimmer {
+  100% {
+    transform: translateX(100%);
   }
 }
