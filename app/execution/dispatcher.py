@@ -51,6 +51,7 @@ async def execute_plan(
         await write_audit_event(
             session, event_type="ACTION_SUPPRESSED", actor=ACTOR,
             merchant_id=risk.merchant_id, entity_type="InterventionPlan", entity_id=plan.plan_id,
+            correlation_id=risk.risk_event_id,
             payload={"action_type": plan.action_type.value, "reason": "frequency_cap"},
         )
         await session.commit()
@@ -64,6 +65,7 @@ async def execute_plan(
         await write_audit_event(
             session, event_type="ACTION_EXECUTED", actor=ACTOR,
             merchant_id=risk.merchant_id, entity_type="InterventionPlan", entity_id=plan.plan_id,
+            correlation_id=risk.risk_event_id,
             payload={
                 "action_type": plan.action_type.value,
                 "channel": plan.channel.value if plan.channel else None,

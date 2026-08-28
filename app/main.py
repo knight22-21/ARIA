@@ -16,6 +16,7 @@ from app.api import (
     ptp,
     recovery,
     risk_events,
+    stream,
     webhooks,
 )
 from app.core.config import settings
@@ -72,6 +73,7 @@ app.include_router(ptp.router)
 app.include_router(escalations.router)
 app.include_router(outbox.router)
 app.include_router(dashboard.router)
+app.include_router(stream.router)
 
 
 @app.get("/", tags=["meta"])
