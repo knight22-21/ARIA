@@ -1,42 +1,46 @@
-import { useState } from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Play, Loader2, Radio } from "lucide-react";
-import { toast } from "sonner";
-import { api } from "@/lib/api";
+import { useCallback, useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { Play, Radio, BadgeIndianRupee } from "lucide-react";
+import { api, type RunResult } from "@/lib/api";
 import { Button, Card, CardTitle, Select } from "@/components/ui";
+import { RunModal } from "@/components/RunModal";
 
 export function Injector({ onFired }: { onFired?: (riskEventId: string) => void }) {
   const qc = useQueryClient();
   const [scenario, setScenario] = useState("");
+  const [modal, setModal] = useState<{ mode: "inject" | "recover"; scenario: string; trigger: () => Promise<RunResult> } | null>(null);
+
   const { data } = useQuery({ queryKey: ["scenarios"], queryFn: api.scenarios });
   const scenarios = data?.scenarios ?? [];
   const selected = scenario || scenarios[0] || "";
 
-  const invalidate = () =>
+  const invalidate = useCallback(() => {
     ["summary", "pnl", "risk-events", "audit", "sankey", "escalations", "outbox"].forEach((k) =>
       qc.invalidateQueries({ queryKey: [k] }),
     );
+  }, [qc]);
 
-  const fire = useMutation({
-    mutationFn: () => api.inject(selected),
-    onSuccess: (r) => {
-      const bits = [r.outcome && `→ ${r.outcome}`, r.diagnosis && `· ${r.diagnosis.root_cause_category}`]
-        .filter(Boolean)
-        .join(" ");
-      toast.success(`Injected ${selected.replace(/_/g, " ")}`, { description: bits || undefined });
-      if (r.risk_event_id) onFired?.(r.risk_event_id);
-      invalidate();
-    },
-    onError: (e: Error) => toast.error("Inject failed", { description: e.message }),
-  });
+  const openInject = () =>
+    setModal({
+      mode: "inject",
+      scenario: selected,
+      trigger: async () => {
+        const r = await api.inject(selected);
+        if (r.risk_event_id) onFired?.(r.risk_event_id);
+        return r as RunResult;
+      },
+    });
 
-  const track = useMutation({
-    mutationFn: api.runOutcomeTracker,
-    onSuccess: () => {
-      toast.success("Outcome tracker ran");
-      invalidate();
-    },
-  });
+  const openRecover = () =>
+    setModal({
+      mode: "recover",
+      scenario: selected,
+      trigger: async () => {
+        const r = await api.recover(selected);
+        onFired?.(r.risk_event_id);
+        return r;
+      },
+    });
 
   return (
     <Card className="h-full">
@@ -47,26 +51,37 @@ export function Injector({ onFired }: { onFired?: (riskEventId: string) => void 
         </span>
       </div>
       <p className="mt-2 text-sm text-muted-foreground">
-        Fire a synthetic payment event through the full pipeline — detection → reasoning →
-        action — and watch it land in the feed below.
+        Fire a case through the full pipeline, or issue a <span className="text-primary">real Razorpay
+        payment link</span> and watch ARIA recover it — each step unfolds live.
       </p>
       <div className="mt-4 flex flex-wrap items-center gap-2">
-        <Select value={selected} onChange={setScenario} className="min-w-[220px] flex-1">
+        <Select value={selected} onChange={setScenario} className="min-w-[200px] flex-1">
           {scenarios.map((s) => (
             <option key={s} value={s}>
               {s.replace(/_/g, " ")}
             </option>
           ))}
         </Select>
-        <Button onClick={() => fire.mutate()} disabled={fire.isPending || !selected}>
-          {fire.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4" />}
-          Fire event
+        <Button onClick={openInject} disabled={!selected}>
+          <Play className="h-4 w-4" /> Fire event
         </Button>
-        <Button variant="outline" onClick={() => track.mutate()} disabled={track.isPending}>
-          {track.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-          Run tracker
+        <Button variant="outline" onClick={openRecover} disabled={!selected}>
+          <BadgeIndianRupee className="h-4 w-4" /> Recover (real link)
         </Button>
       </div>
+
+      {modal && (
+        <RunModal
+          open
+          mode={modal.mode}
+          scenario={modal.scenario}
+          trigger={modal.trigger}
+          onClose={() => {
+            setModal(null);
+            invalidate();
+          }}
+        />
+      )}
     </Card>
   );
 }

@@ -130,6 +130,28 @@ export interface InjectResult {
   escalation?: { urgency: string; reason: string };
 }
 
+export interface RecoverResult {
+  risk_event_id: string;
+  amount_paise: number;
+  workflow_type: string;
+  diagnosis: { root_cause_category: string; confidence: number };
+  payment_link_url: string | null;
+  message: string;
+}
+
+/** Superset returned by either inject or recover — consumed by the run modal. */
+export interface RunResult {
+  risk_event_id?: string | null;
+  amount_paise?: number;
+  outcome?: string;
+  workflow_type?: string;
+  diagnosis?: { root_cause_category: string; confidence: number };
+  intervention?: { action_type: string; channel: string | null; message_preview?: string };
+  escalation?: { urgency: string; reason: string };
+  payment_link_url?: string | null;
+  message?: string;
+}
+
 // ---- Calls ----
 export const api = {
   summary: () => req<Summary>("/v1/stats/summary"),
@@ -146,6 +168,8 @@ export const api = {
   scenarios: () => req<{ scenarios: string[] }>("/dev/scenarios"),
   inject: (scenario: string) =>
     req<InjectResult>("/dev/inject", { method: "POST", body: JSON.stringify({ scenario, inline: true }) }),
+  recover: (scenario: string) =>
+    req<RecoverResult>("/dev/recover", { method: "POST", body: JSON.stringify({ scenario }) }),
   runOutcomeTracker: () => req("/dev/run-outcome-tracker", { method: "POST" }),
   capture: (customer_id: string, amount_paise: number) =>
     req("/dev/capture", { method: "POST", body: JSON.stringify({ customer_id, amount_paise }) }),
