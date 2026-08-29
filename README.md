@@ -49,9 +49,11 @@ Synthetic injector  ────┘   (idempotent) (6-signal    (CheckPolicy    
 
 | Area | This build |
 |---|---|
-| Payment events | **Razorpay test mode** (real webhooks) **+ synthetic injector** as the guaranteed demo path |
-| Messaging (WhatsApp/SMS/email) | **Simulated** — rendered to an `outbox` and shown in the dashboard; no real sends |
-| Voice/IVR | Script + SSML **preview only**; no live calls |
+| **Recovery loop** | **Real** — ARIA issues a real **Razorpay test-mode payment link**; a real payment fires a real webhook back through a tunnel, and ARIA attributes the recovery to the diagnosed case (real payment reference, 1.0 attribution) |
+| Payment events (failures) | **Razorpay test webhooks** + a synthetic injector as the guaranteed demo path |
+| Messaging (WhatsApp/SMS/email) | **Simulated** — rendered to an `outbox` shown in the dashboard; no real sends |
+| Voice/IVR | Hinglish script + SSML **preview only**; no live calls |
+| Batch backdrop | **Seeded** 30-day dataset (deterministic) for scale; the P&L math is real |
 | LLM | Real inference via Groq (free) or local Ollama |
 
 ---
