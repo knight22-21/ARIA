@@ -70,6 +70,64 @@ async def _cost_for_risk(session: AsyncSession, risk_event_id) -> int:
     return int(total or 0)
 
 
+async def attribute_recovery_for_risk(
+    session: AsyncSession,
+    risk_event_id,
+    *,
+    amount_paise: int,
+    captured_event_id=None,
+) -> bool:
+    """Directly attribute a recovery to a specific risk event (used by the real
+    Razorpay capture webhook, where notes carry the risk-event id). Returns True if
+    a new recovery was recorded."""
+    risk = await session.get(RiskEvent, risk_event_id)
+    if risk is None or risk.status == enums.RiskStatus.recovered:
+        return False
+
+    plan = (
+        await session.execute(
+            select(InterventionPlan).where(InterventionPlan.risk_event_id == risk_event_id)
+        )
+    ).scalars().first()
+    cost = await _cost_for_risk(session, risk_event_id)
+    now = datetime.now(UTC)
+
+    session.add(
+        RecoveryRecord(
+            plan_id=plan.plan_id if plan else None,
+            risk_event_id=risk_event_id,
+            outcome=enums.RecoveryOutcome.recovered,
+            recovered_amount_paise=amount_paise or risk.amount_at_risk_paise,
+            payment_event_id_recovered=captured_event_id,
+            attribution_confidence=1.0,
+            recovery_cost_paise=cost,
+            recovered_at=now,
+        )
+    )
+    risk.status = enums.RiskStatus.recovered
+    risk.resolved_at = now
+    await write_audit_event(
+        session, event_type="OUTCOME_DETECTED", actor="razorpay-webhook@1.0.0",
+        merchant_id=risk.merchant_id, entity_type="RiskEvent", entity_id=risk_event_id,
+        correlation_id=risk_event_id,
+        payload={"outcome": "recovered", "source": "razorpay_capture"},
+    )
+    await write_audit_event(
+        session, event_type="RECOVERY_ATTRIBUTED", actor="razorpay-webhook@1.0.0",
+        merchant_id=risk.merchant_id, entity_type="RiskEvent", entity_id=risk_event_id,
+        correlation_id=risk_event_id,
+        payload={
+            "recovered_amount_paise": amount_paise or risk.amount_at_risk_paise,
+            "attribution_confidence": 1.0,
+            "recovery_cost_paise": cost,
+            "source": "razorpay_capture",
+        },
+    )
+    await session.commit()
+    log.info("attribute_recovery.direct", risk_event_id=str(risk_event_id))
+    return True
+
+
 async def track_outcomes(session: AsyncSession, *, now: datetime | None = None) -> dict:
     """Scan in-progress risk events and resolve those whose outcome is known."""
     now = now or datetime.now(UTC)

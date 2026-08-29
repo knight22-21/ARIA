@@ -22,6 +22,14 @@ _MSG_COST_PAISE = 150
 _IVR_COST_PAISE = 500
 GLOBAL_MAX_RETRIES = 5
 
+# "Collect payment" actions get a real Razorpay payment link (test mode) when configured.
+_PAYMENT_LINK_ACTIONS = {
+    enums.ActionType.send_payment_link,
+    enums.ActionType.send_invoice_reminder,
+    enums.ActionType.offer_emi,
+    enums.ActionType.send_payment_plan,
+}
+
 
 class MessageExecutor(Executor):
     """Stubbed dispatcher for all message-based actions → writes to Outbox."""
@@ -68,21 +76,48 @@ class MessageExecutor(Executor):
         if dry_run:
             return ExecutionResult(enums.PlanStatus.planned, "dry-run", self.estimate_cost(plan))
 
+        body = plan.message_content or ""
+        detail = f"message queued to outbox via {channel.value}"
+
+        # For "collect payment" actions, create a REAL Razorpay payment link (test mode)
+        # when configured, and weave the URL into the message. The risk-event id rides in
+        # notes so the capture webhook can attribute the recovery precisely.
+        if plan.action_type in _PAYMENT_LINK_ACTIONS:
+            from app.integrations import razorpay
+
+            if razorpay.is_configured():
+                link = await razorpay.create_payment_link(
+                    amount_paise=risk.amount_at_risk_paise,
+                    description=f"Payment for {risk.workflow_type.value}",
+                    reference_id=str(risk.risk_event_id),
+                    customer_name=None,
+                    customer_email=payment_event.customer_email if payment_event else None,
+                    customer_contact=payment_event.customer_phone if payment_event else None,
+                    notes={"aria_risk_event_id": str(risk.risk_event_id)},
+                )
+                if link and link.get("short_url"):
+                    url = link["short_url"]
+                    body = (
+                        body.replace("{{link}}", url).replace("{link}", url)
+                        if ("{link}" in body or "{{link}}" in body)
+                        else f"{body}\nPay securely here: {url}"
+                    )
+                    detail = f"real Razorpay payment link sent via {channel.value}"
+
         outbox = Outbox(
             merchant_id=risk.merchant_id,
             plan_id=plan.plan_id,
             channel=channel,
             recipient=recipient,
             subject=None,
-            body=plan.message_content,
+            body=body,
             status=enums.OutboxStatus.sent,
             cost_paise=_MSG_COST_PAISE,
         )
         session.add(outbox)
         await session.flush()
         return ExecutionResult(
-            enums.PlanStatus.completed, f"message queued to outbox via {channel.value}",
-            _MSG_COST_PAISE, outbox.outbox_id,
+            enums.PlanStatus.completed, detail, _MSG_COST_PAISE, outbox.outbox_id
         )
 
 
