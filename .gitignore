@@ -222,3 +222,6 @@ __marimo__/
 project.md
 BUILD_PLAN.md
 DEMO.md
+
+# tunnel binary (local only)
+cloudflared.exe
