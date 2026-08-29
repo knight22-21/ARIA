@@ -60,6 +60,16 @@ _SCENARIOS: dict[str, dict] = {
         "error_code": None,
         "error_description": "Checkout session expired without payment",
     },
+    "b2b_invoice_small": {
+        "event_type": enums.EventType.invoice_overdue,
+        "amount_paise": 35_000_00,  # ₹35,000 — under the ₹50k ceiling, proceeds autonomously
+        "customer_id": "cust_b2b_bright_014",
+        "customer_phone": "+919812345680",
+        "customer_email": "ap@brightretail.example.com",
+        "payment_method": {"type": "invoice", "aging_bucket": "31-60", "days_overdue": 44},
+        "error_code": "invoice_overdue",
+        "error_description": "Invoice INV-0042 overdue by 44 days (31-60)",
+    },
     "b2b_invoice_overdue": {
         "event_type": enums.EventType.invoice_overdue,
         "amount_paise": 2_30_00_000,  # ₹2.3L
