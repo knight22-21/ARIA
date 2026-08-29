@@ -178,6 +178,8 @@ async def recover_with_real_link(
     m = re.search(r"https?://\S+", body or "")
     return {
         "risk_event_id": str(risk.risk_event_id),
+        "amount_paise": risk.amount_at_risk_paise,
+        "workflow_type": risk.workflow_type.value,
         "diagnosis": {
             "root_cause_category": diag_result.root_cause_category,
             "confidence": diag_result.confidence,
