@@ -121,3 +121,67 @@ async def run_promise_checks(session: AsyncSession = Depends(get_session)) -> di
     from app.execution.promises import check_promises
 
     return await check_promises(session)
+
+
+class RecoverRequest(BaseModel):
+    scenario: str = "b2b_invoice_small"
+
+
+@router.post("/recover")
+async def recover_with_real_link(
+    req: RecoverRequest, session: AsyncSession = Depends(get_session)
+) -> dict:
+    """Deterministic demo path: real detection + real diagnosis, then issue a REAL
+    Razorpay payment link for the case. Returns the link so you can pay it and watch
+    ARIA attribute the recovery. (Bypasses the LLM's action *choice* only.)"""
+    _guard()
+    import re
+
+    from sqlalchemy import select
+
+    from app.agents.diagnostic import run_diagnostic
+    from app.execution.dispatcher import execute_plan
+    from app.models.entities import InterventionPlan, Outbox
+
+    payload = build_scenario(req.scenario)
+    pe, risk = await ingest_payment_event(session, payload, inline=True)
+    if risk is None:
+        raise HTTPException(status_code=400, detail="scenario did not produce a risk event")
+
+    diag_result, diag_row = await run_diagnostic(session, risk)
+
+    amount_inr = risk.amount_at_risk_paise // 100
+    plan = InterventionPlan(
+        diagnosis_id=diag_row.diagnosis_id,
+        risk_event_id=risk.risk_event_id,
+        action_type=enums.ActionType.send_payment_link,
+        channel=enums.Channel.whatsapp,
+        message_content=(
+            f"Namaste! Aapka payment ₹{amount_inr} abhi pending hai. "
+            "Secure link se abhi pay kijiye: {link}"
+        ),
+        attribution_window_hours=72,
+        estimated_cost_paise=150,
+        status=enums.PlanStatus.planned,
+    )
+    session.add(plan)
+    await session.flush()
+    risk.status = enums.RiskStatus.in_progress
+    await session.commit()
+
+    await execute_plan(session, plan.plan_id)
+
+    outbox = (
+        await session.execute(select(Outbox).where(Outbox.plan_id == plan.plan_id))
+    ).scalars().first()
+    body = outbox.body if outbox else ""
+    m = re.search(r"https?://\S+", body or "")
+    return {
+        "risk_event_id": str(risk.risk_event_id),
+        "diagnosis": {
+            "root_cause_category": diag_result.root_cause_category,
+            "confidence": diag_result.confidence,
+        },
+        "payment_link_url": m.group(0) if m else None,
+        "message": body,
+    }
