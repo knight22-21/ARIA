@@ -9,9 +9,6 @@ surfaces; reasons over root cause with an LLM diagnostic chain; executes bounded
 reversible recovery actions; measures actual money recovered as a P&L; and proves
 every decision in an append-only audit ledger.
 
-See [`BUILD_PLAN.md`](./BUILD_PLAN.md) for the phased build plan and [`DEMO.md`](./DEMO.md)
-for the 15-minute evaluator walkthrough.
-
 ## Architecture
 
 ```
@@ -83,7 +80,7 @@ cd frontend && npm install
 VITE_API_TARGET=http://localhost:8010 npm run dev   # http://localhost:5173
 ```
 Open **http://localhost:5173**, hit **Fire event** on the Command Center, then click a Risk
-Event to watch the reasoning stream. Full flow in [`DEMO.md`](./DEMO.md).
+Event to watch the reasoning stream.
 
 > Ollama (if used) runs on the **host**; containers reach it via `host.docker.internal:11434`.
 > To run the whole stack (api + worker + beat) in Docker instead: `docker compose up --build`.
@@ -151,5 +148,3 @@ tests/
 | P4 | Hinglish + B2B receivables + human-in-loop | ✅ |
 | P5 | Design-led dashboard | ✅ (UI polish pass pending) |
 | P6 | Seed data, demo script, docs | ✅ |
-
-Full detail in [`BUILD_PLAN.md`](./BUILD_PLAN.md).
